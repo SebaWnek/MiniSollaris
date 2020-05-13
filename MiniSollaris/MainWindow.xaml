@@ -6,8 +6,12 @@
         xmlns:local="clr-namespace:MiniSollaris"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800"
-        WindowState="Maximized">
-    <Canvas x:Name="background">
-        
+        WindowState="Maximized"
+        Closing='Window_Closing'
+        Loaded="Window_Loaded"
+        WindowStyle="None">
+    <Canvas x:Name="background" Background="Black">
+        <Button x:Name="stopButton" Canvas.Right ="10" Canvas.Bottom="10" Content="Stop" Click="stopButton_Click"/>
+        <Button x:Name="startButton" Canvas.Right ="50" Canvas.Bottom="10" Content="Start" Click="startButton_Click"/>
     </Canvas>
 </Window>

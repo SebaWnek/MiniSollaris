@@ -11,10 +11,12 @@ namespace MiniSollaris
         double windowHeight;
         double windowWidth;
         long horizontalRange;
-        long scale;
+        double scale;
         long[] viewCenter;
         long[] translationVector;
 
+        public long[] ViewCenter { get => viewCenter; set => viewCenter = value; }
+        public long HorizontalRange { get => horizontalRange; set => horizontalRange = value; }
 
         public WindowCalculatorHelper(double height, double width, long range, long[] center)
         {
@@ -35,16 +37,16 @@ namespace MiniSollaris
             return result;
         }
 
-        private long CalculateNewScale()
+        private double CalculateNewScale()
         {
-            return (long)windowWidth / horizontalRange;
+            return windowWidth / horizontalRange;
         }
 
         public double[] CalculateScreenPosition(long[] coordinates)
         {
             double[] result = new double[2];
             result[0] = windowWidth / 2 + scale * (coordinates[0] + translationVector[0]);
-            result[1] = windowWidth / 2 - scale * (coordinates[1] + translationVector[1]);
+            result[1] = windowHeight / 2 - scale * (coordinates[1] + translationVector[1]);
             return result;
         }
 

@@ -1,85 +1,69 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using System.Windows.Shapes;
 
 namespace MiniSollaris
 {
     class SolarSystem
     {
         public int TimeStep { get; set; }
+        internal CelestialObject[] Objects { get => objects; set => objects = value; }
+
         private CelestialObject[] objects;
-        private double[,] distances;
-        private double[,] accelerationsMatrix;
-        private double[] accelerations;
-        private int objcectsCount;
 
         public SolarSystem(CelestialObject[] obj, int timeStep)
         {
             TimeStep = timeStep;
-            objects = obj;
-            objcectsCount = objects.Length;
-            distances = new double[objcectsCount, objcectsCount];
-            accelerationsMatrix = new double[objcectsCount, objcectsCount];
-            accelerations = new double[objcectsCount];
+            Objects = obj;
+        }
+        public SolarSystem(List<CelestialObject> obj, int timeStep)
+        {
+            TimeStep = timeStep;
+            Objects = obj.ToArray();
+        }
+
+        public SolarSystem(string path, int timeStep)
+        {
+            TimeStep = timeStep;
+            Objects = Deserialize(path);
         }
 
         public void CalculateStep()
         {
-            ClearMatrices();
-            CalculateDistanceMatrix();
-            CalculateAccelerationMatric();
-            CalculateAccelerations();
-            for(int i = 0; i < objcectsCount; i++)
+            foreach (CelestialObject obj in objects)
             {
-                objects[i].CalculateStep(accelerations[i], TimeStep);
+                obj.CalculateNewPosition(objects, TimeStep);
             }
         }
 
-        private double CalculateDistance(CelestialObject obj1, CelestialObject obj2)
+        public void CalculateStepParallel()
         {
-            return Math.Sqrt((obj1.Position[0] - obj2.Position[0]) * (obj1.Position[0] - obj2.Position[0]) + (obj1.Position[1] - obj2.Position[1]) * (obj1.Position[1] - obj2.Position[1]));
+            Parallel.ForEach(Objects, (obj) => { (obj as CelestialObject).CalculateNewPosition(Objects, TimeStep); });
         }
 
-        private void ClearMatrices()
+        public void Serialize(string path)
         {
-            distances = new double[objcectsCount, objcectsCount];
-            accelerationsMatrix = new double[objcectsCount, objcectsCount];
-            accelerations = new double[objcectsCount];
+            string jsonString = JsonSerializer.Serialize(Objects, new JsonSerializerOptions() { WriteIndented = true } );
+            File.WriteAllText(path, jsonString);
         }
 
-        private void CalculateDistanceMatrix()
+        public static CelestialObject[] Deserialize(string path)
         {
-            for (int i = 0; i < objcectsCount; i++)
-            {
-                for (int j = 0; j < objcectsCount; j++)
-                {
-                    distances[i, j] = CalculateDistance(objects[i], objects[j]); //for i = j it will be just 0, don't want to do checking as it would need to check n^2 times to eliminate n cases
-                }
-            }
+            CelestialObject[] result;
+            string jsonString = File.ReadAllText(path);
+            result = JsonSerializer.Deserialize<CelestialObject[]>(jsonString);
+            return result;
         }
 
-        private void CalculateAccelerationMatric()
+        public CelestialObject SelectObject(string name)
         {
-            for (int i = 0; i < objcectsCount; i++)
-            {
-                for (int j = 0; j < objcectsCount; j++)
-                {
-                    accelerationsMatrix[i, j] = objects[j].SGravPar / distances[i, j]; //for i = j it will be just 0, don't want to do checking as it would need to check n^2 times to eliminate n cases
-                }
-            }
-        }
-
-        private void CalculateAccelerations()
-        {
-            for (int i = 0; i < objcectsCount; i++)
-            {
-                for (int j = 0; j < objcectsCount; j++)
-                {
-                    accelerations[i] += accelerationsMatrix[i,j];
-                }
-            }
+            CelestialObject result = objects.First(obj => obj.Name == name); //not First or default so we get exception if not found
+            return result;
         }
     }
 }
