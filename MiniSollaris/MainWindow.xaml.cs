@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace MiniSollaris
 {
@@ -27,9 +28,11 @@ namespace MiniSollaris
         long horizontalRange = 1000000000000; //2AU
         CelestialObject selectedObject = null;
         long[] viewCenter = { 0, 0 };
-        int timeStep = 10; //seconds
-        int skipSteps = 5000; //steps to skip for plot/simulation
+        double timeStep = 1; //seconds
+        int skipSteps = 10; //steps to skip for plot/simulation
         CancellationTokenSource tokenSource;
+        DispatcherTimer timer;
+        object locker;
 
         WindowCalculatorHelper windowCalculatorHelper;
         SolarSystem system;
@@ -40,29 +43,22 @@ namespace MiniSollaris
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
             windowHeight = background.ActualHeight;
             windowWidth = background.ActualWidth;
             windowCalculatorHelper = new WindowCalculatorHelper(windowHeight, windowWidth, horizontalRange, new long[] { 0, 0 });
 
-            system = DataAccess.InitializeHardcodedSystem(timeStep);
+            system = DataAccess.InitializeHardcodedSystem(timeStep, 0);
             AddGraphics();
+            RedrawAll();
 
-            //SelectNewCenter("Mars");
-            //SelectNewRange(100000000);
+            //SelectNewCenter("Earth");
+            //SelectNewRange(1500000000);
 
-            
 
-            //Test();
-        }
 
-        private void Test()
-        {
-            SpeedTest test = new SpeedTest(system, 100);
-            long concurrent = test.RunConcurrent();
-            Debug.WriteLine("Concurrent test result: " + concurrent);
-            long parallel = test.RunParallel();
-            Debug.WriteLine("Parallel test result:   " + parallel);
-            Debug.WriteLine("Parallel speed up:      " + (double)concurrent / (double)parallel);
+            //SpeedTest test = new SpeedTest(system, 10);
+            //test.Test(Window.GetWindow(this), true,true,true,false,true);
         }
 
         private async Task Animate(Action action)
@@ -77,21 +73,6 @@ namespace MiniSollaris
                     RedrawAll();
                     i = 1;
                 }
-            }
-        }
-
-        private async Task Animate(Action action, CancellationToken token)
-        {
-            for (int i = 0; i < int.MaxValue; i++)
-            {
-                //system.CalculateStep();
-                action();
-                if (i % skipSteps == 0)
-                {
-                    await Task.Delay(1);
-                    RedrawAll();
-                }
-                if (token.IsCancellationRequested) break;
             }
         }
 
@@ -145,6 +126,7 @@ namespace MiniSollaris
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            tokenSource.Cancel();
             system.Serialize("system.txt");
         }
 
@@ -157,7 +139,53 @@ namespace MiniSollaris
         private async void startButton_Click(object sender, RoutedEventArgs e)
         {
             tokenSource = new CancellationTokenSource();
-            await Animate(system.CalculateStep, tokenSource.Token);
+            //await Animate(system.CalculateStep, tokenSource.Token);
+            AnimateThreadedStepped(tokenSource.Token);
+        }
+
+        private async Task Animate(Action action, CancellationToken token)
+        {
+            for (int i = 0; i < int.MaxValue; i++)
+            {
+                system.CalculateStep();
+                action();
+                if (i % skipSteps == 0)
+                {
+                    await Task.Delay(1);
+                    RedrawAll();
+                }
+                if (token.IsCancellationRequested) break;
+            }
+        }
+
+        private void AnimateThreaded(CancellationToken token)
+        {
+            timer = new DispatcherTimer();
+            timer.Interval = new TimeSpan(0, 0, 0, 0, 30);
+            timer.Tick += Timer_Tick;
+            system.StartThreadsPerCore(token);
+            timer.Start();
+        }
+
+        private void AnimateThreadedStepped(CancellationToken token)
+        {
+            locker = new object();
+            timer = new DispatcherTimer();
+            timer.Interval = new TimeSpan(0, 0, 0, 0, 30);
+            timer.Tick += Timer_TickStepped;
+            system.StartThreadsPerCoreStepped(token, skipSteps, locker);
+            timer.Start();
+        }
+
+        private void Timer_TickStepped(object sender, EventArgs e)
+        {
+            RedrawAll();
+            lock (locker) Monitor.PulseAll(locker);
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            RedrawAll();
         }
     }
 }

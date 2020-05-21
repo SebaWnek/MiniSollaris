@@ -33,5 +33,10 @@ namespace MiniSollaris
         {
             return Math.Sqrt(G * mass / distance);
         }
+
+        public static double OrbitalVelocityFromMass(double mass1, double mass2, long distance)
+        {
+            return Math.Sqrt(G * mass1 / distance) + Math.Sqrt(G * mass2 / distance);
+        }
     }
 }

@@ -14,6 +14,9 @@ namespace MiniSollaris
             {
 
             }
+        public CelestialObject2(string name, double mass, bool isCalculatable, long radius, long distance, double angle, double andleDeviation, double speed, int imageSize = 2, Brush color = null)
+            :base(name, mass, isCalculatable, radius, distance, angle, andleDeviation, speed, imageSize, color)
+        { }
         protected override void CalculateAcceleration(CelestialObject[] objects)
         {
             acceleration = new double[] { 0, 0 };

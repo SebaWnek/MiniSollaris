@@ -23,6 +23,8 @@ namespace MiniSollaris
         public Ellipse Picture { get; set; }
 
         protected double[] acceleration = { 0, 0 };
+        public int Number { get; set; }
+        public CelestialObject[] CalculatableObjects { get; set; }
 
         public CelestialObject()
         {
@@ -61,20 +63,26 @@ namespace MiniSollaris
             Picture.Height = imageSize;
         }
 
-        public void CalculateNewPosition(CelestialObject[] objects, int timeStep)
+        public void CalculateNewPosition(CelestialObject[] objects, double timeStep)
         {
             CalculateAcceleration(objects);
             CalculateNewVelocity(timeStep);
             CalculateNewPosition(timeStep);
         }
 
-        private void CalculateNewPosition(int timeStep)
+        public void CalculateNewVelocity(CelestialObject[] objects, double timeStep)
+        {
+            CalculateAcceleration(objects);
+            CalculateNewVelocity(timeStep);
+        }
+
+        public void CalculateNewPosition(double timeStep)
         {
             Position[0] += (long)Math.Round(Velocity[0] * timeStep);
             Position[1] += (long)Math.Round(Velocity[1] * timeStep);
         }
 
-        private void CalculateNewVelocity(int timeStep)
+        private void CalculateNewVelocity(double timeStep)
         {
             Velocity[0] += acceleration[0] * timeStep;
             Velocity[1] += acceleration[1] * timeStep;
