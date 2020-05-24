@@ -20,11 +20,13 @@ namespace MiniSollaris
         public double TimeStep { get; set; }
         public static double G { get; set; } = 6.6743015E-11; //Gravitational constant
         internal CelestialObject[] Objects { get => objects; set => objects = value; }
+        public int ObjectsCount { get => objects.Length; }
 
         private CelestialObject[] objects;
         private double[,] gMms; //precalculated combinations of G and masses of objects
         private double[,,] forces; //forces betweeen each planet
         private double[,] forcesSum;
+        volatile static int barrierCount = 0;
 
         public SolarSystem(CelestialObject[] obj, double timeStep)
         {
@@ -39,9 +41,9 @@ namespace MiniSollaris
         {
             TimeStep = timeStep;
             Objects = obj.ToArray();
-            CalculateContinuousStepsGMms();
-            forces = new double[objects.Length, objects.Length, 2];
-            forcesSum = new double[objects.Length, 2];
+            //CalculateContinuousStepsGMms();
+            //forces = new double[objects.Length, objects.Length, 2];
+            //forcesSum = new double[objects.Length, 2];
         }
 
         public SolarSystem(string path, double timeStep)
@@ -139,7 +141,7 @@ namespace MiniSollaris
                 {
                     UpdatePositions(threadObjects[i]);
                 }
-                barrier.SignalAndWait();
+                //barrier.SignalAndWait();
             }
         }
 
@@ -149,7 +151,7 @@ namespace MiniSollaris
             int objCount = objects.Length;
             int count = procCount <= objCount ? procCount : objCount;
             Barrier barrier = new Barrier(count);
-            List<CelestialObject>[] objPerThread = DivideObjectsPerThreads(count);
+            List<CelestialObject>[] objPerThread = DivideObjectsPerThreadsSlim(count);
             AssignCalculatableObjects();
             Thread[] threads = GenerateThreads(objPerThread, barrier, token);
             foreach (Thread thread in threads) thread.Start();
@@ -161,7 +163,7 @@ namespace MiniSollaris
             int objCount = objects.Length;
             int count = procCount <= objCount ? procCount : objCount;
             Barrier barrier = new Barrier(count);
-            List<CelestialObject>[] objPerThread = DivideObjectsPerThreads(count);
+            List<CelestialObject>[] objPerThread = DivideObjectsPerThreadsSlim(count);
             AssignCalculatableObjects();
             Thread[] threads = GenerateThreads(objPerThread, barrier, steps);
             foreach (Thread thread in threads) thread.Start();
@@ -340,17 +342,24 @@ namespace MiniSollaris
             CelestialObject[] threadObjects = obj.ToArray();
             while (true)
             {
+                //Interlocked.Increment(ref barrierCount);
                 if (token.IsCancellationRequested) break;
                 for (int i = 0; i < objCount; i++)
                 {
                     threadObjects[i].CalculateNewVelocity(objects, TimeStep);
                 }
-                barrier.SignalAndWait();
+                //barrier.SignalAndWait();
                 for (int i = 0; i < objCount; i++)
                 {
                     threadObjects[i].CalculateNewPosition(TimeStep);
                 }
-                barrier.SignalAndWait();
+                //barrier.SignalAndWait();
+                //Interlocked.Decrement(ref barrierCount);
+                //lock (barrier)
+                //{
+                //    Monitor.PulseAll(barrier);
+                //}
+                //while (barrierCount != 0) lock (barrier) Monitor.Wait(barrier);
             }
         }
 
@@ -360,6 +369,7 @@ namespace MiniSollaris
             CelestialObject[] threadObjects = obj.ToArray();
             for (int j = 0; j < steps; j++)
             {
+                if (2 != 2) break;
                 for (int i = 0; i < objCount; i++)
                 {
                     threadObjects[i].CalculateNewVelocity(objects, TimeStep);
@@ -369,7 +379,7 @@ namespace MiniSollaris
                 {
                     threadObjects[i].CalculateNewPosition(TimeStep);
                 }
-                barrier.SignalAndWait();
+                //barrier.SignalAndWait();
             }
         }
         #endregion

@@ -29,7 +29,7 @@ namespace MiniSollaris
         CelestialObject selectedObject = null;
         long[] viewCenter = { 0, 0 };
         double timeStep = 1; //seconds
-        int skipSteps = 10; //steps to skip for plot/simulation
+        int skipSteps = 1; //steps to skip for plot/simulation
         CancellationTokenSource tokenSource;
         DispatcherTimer timer;
         object locker;
@@ -48,17 +48,30 @@ namespace MiniSollaris
             windowWidth = background.ActualWidth;
             windowCalculatorHelper = new WindowCalculatorHelper(windowHeight, windowWidth, horizontalRange, new long[] { 0, 0 });
 
-            system = DataAccess.InitializeHardcodedSystem(timeStep, 0);
+            system = DataAccess.InitializeHardcodedSystem(timeStep, 50000);
             AddGraphics();
             RedrawAll();
 
-            //SelectNewCenter("Earth");
-            //SelectNewRange(1500000000);
+            SelectNewCenter("Mars");
+            SelectNewRange(150000000);
 
 
+            Test();
+        }
 
-            //SpeedTest test = new SpeedTest(system, 10);
-            //test.Test(Window.GetWindow(this), true,true,true,false,true);
+        private async void startButton_Click(object sender, RoutedEventArgs e)
+        {
+            tokenSource = new CancellationTokenSource();
+            //await Animate(system.CalculateStep, tokenSource.Token);
+            AnimateThreaded(tokenSource.Token);
+        }
+
+        private void Test()
+        {
+            int testSteps = 5;
+            SpeedTest test = new SpeedTest(system, testSteps);
+            string[] info = { $"Time Step: {timeStep}", $"Test Steps: {testSteps}", $"Objects Count: {system.ObjectsCount}" };
+            test.Test(Window.GetWindow(this), true, true, true, false, false, info);
         }
 
         private async Task Animate(Action action)
@@ -134,13 +147,6 @@ namespace MiniSollaris
         {
             tokenSource.Cancel();
             tokenSource.Dispose();
-        }
-
-        private async void startButton_Click(object sender, RoutedEventArgs e)
-        {
-            tokenSource = new CancellationTokenSource();
-            //await Animate(system.CalculateStep, tokenSource.Token);
-            AnimateThreadedStepped(tokenSource.Token);
         }
 
         private async Task Animate(Action action, CancellationToken token)
