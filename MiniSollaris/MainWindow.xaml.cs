@@ -33,6 +33,7 @@ namespace MiniSollaris
         CancellationTokenSource tokenSource;
         DispatcherTimer timer;
         object locker;
+        object[] lockers;
 
         WindowCalculatorHelper windowCalculatorHelper;
         SolarSystem system;
@@ -48,47 +49,27 @@ namespace MiniSollaris
             windowWidth = background.ActualWidth;
             windowCalculatorHelper = new WindowCalculatorHelper(windowHeight, windowWidth, horizontalRange, new long[] { 0, 0 });
 
-            system = DataAccess.InitializeHardcodedSystem(timeStep, 50000);
+            system = DataAccess.InitializeHardcodedSystem(timeStep, 2000);
             AddGraphics();
             RedrawAll();
 
-            SelectNewCenter("Mars");
-            SelectNewRange(150000000);
+            //SelectNewCenter("Mars");
+            //SelectNewRange(150000000);
 
 
             Test();
         }
 
-        private async void startButton_Click(object sender, RoutedEventArgs e)
-        {
-            tokenSource = new CancellationTokenSource();
-            //await Animate(system.CalculateStep, tokenSource.Token);
-            AnimateThreaded(tokenSource.Token);
-        }
 
         private void Test()
         {
-            int testSteps = 5;
+            int testSteps = 10000;
             SpeedTest test = new SpeedTest(system, testSteps);
             string[] info = { $"Time Step: {timeStep}", $"Test Steps: {testSteps}", $"Objects Count: {system.ObjectsCount}" };
-            test.Test(Window.GetWindow(this), true, true, true, false, false, info);
+            test.Test(Window.GetWindow(this), true, true, true, true, false, false, info);
         }
 
-        private async Task Animate(Action action)
-        {
-            for (int i = 1; i < skipSteps; i++)
-            {
-                //system.CalculateStep();
-                action();
-                if (i % skipSteps == 0)
-                {
-                    await Task.Delay(1);
-                    RedrawAll();
-                    i = 1;
-                }
-            }
-        }
-
+        #region Graphics
         public void SelectNewCenter(string name)
         {
             selectedObject = system.SelectObject(name);
@@ -134,9 +115,15 @@ namespace MiniSollaris
             Canvas.SetLeft(obj.Picture, position[0] - obj.Picture.ActualWidth / 2);
             Canvas.SetTop(obj.Picture, position[1] - obj.Picture.ActualHeight / 2);
         }
+        #endregion
 
-        
-
+        #region Controls
+        private void startButton_Click(object sender, RoutedEventArgs e)
+        {
+            tokenSource = new CancellationTokenSource();
+            //await Animate(system.CalculateStep, tokenSource.Token);
+            AnimateThreaded(tokenSource.Token);
+        }
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             tokenSource.Cancel();
@@ -147,6 +134,36 @@ namespace MiniSollaris
         {
             tokenSource.Cancel();
             tokenSource.Dispose();
+        }
+        private void Timer_TickStepped(object sender, EventArgs e)
+        {
+            RedrawAll();
+            lock (locker) Monitor.PulseAll(locker);
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            OtherHelper.MultiLock(lockers, lockers.Length, () =>
+            {
+                RedrawAll();
+            });
+        }
+        #endregion
+
+        #region Animate
+        private async Task Animate(Action action)
+        {
+            for (int i = 1; i < skipSteps; i++)
+            {
+                //system.CalculateStep();
+                action();
+                if (i % skipSteps == 0)
+                {
+                    await Task.Delay(1);
+                    RedrawAll();
+                    i = 1;
+                }
+            }
         }
 
         private async Task Animate(Action action, CancellationToken token)
@@ -169,7 +186,7 @@ namespace MiniSollaris
             timer = new DispatcherTimer();
             timer.Interval = new TimeSpan(0, 0, 0, 0, 30);
             timer.Tick += Timer_Tick;
-            system.StartThreadsPerCore(token);
+            lockers = system.StartThreadsPerCoreWithLocker(token);
             timer.Start();
         }
 
@@ -179,19 +196,10 @@ namespace MiniSollaris
             timer = new DispatcherTimer();
             timer.Interval = new TimeSpan(0, 0, 0, 0, 30);
             timer.Tick += Timer_TickStepped;
-            system.StartThreadsPerCoreStepped(token, skipSteps, locker);
+            system.StartThreadsPerCoreInCycles(token, skipSteps, locker);
             timer.Start();
         }
+        #endregion
 
-        private void Timer_TickStepped(object sender, EventArgs e)
-        {
-            RedrawAll();
-            lock (locker) Monitor.PulseAll(locker);
-        }
-
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            RedrawAll();
-        }
     }
 }

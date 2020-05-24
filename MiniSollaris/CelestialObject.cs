@@ -49,7 +49,7 @@ namespace MiniSollaris
             Mass = mass;
             IsCalculatable = isCalculatable;
             Radius = radius;
-            Position = MathHelper.PositionPolarToCartesian(distance,angle);
+            Position = MathHelper.PositionPolarToCartesian(distance, angle);
             Velocity = MathHelper.VelocityPolarToCartesian(speed, angle, andleDeviation);
             StdGravPar = G * Mass;
             GenerateShape(imageSize, color);
@@ -63,49 +63,50 @@ namespace MiniSollaris
             Picture.Height = imageSize;
         }
 
-        public void CalculateNewPosition(CelestialObject[] objects, double timeStep)
-        {
-            CalculateAcceleration(objects);
-            CalculateNewVelocity(timeStep);
-            CalculateNewPosition(timeStep);
-        }
-
-        public void CalculateNewVelocity(CelestialObject[] objects, double timeStep)
-        {
-            CalculateAcceleration(objects);
-            CalculateNewVelocity(timeStep);
-        }
-
         public void CalculateNewPosition(double timeStep)
+        {
+            CalculateAcceleration();
+            UpdateVelocity(timeStep);
+            UpdatePosition(timeStep);
+        }
+
+        public void CalculateNewVelocity(double timeStep)
+        {
+            CalculateAcceleration();
+            UpdateVelocity(timeStep);
+        }
+
+        public void UpdatePosition(double timeStep)
         {
             Position[0] += (long)Math.Round(Velocity[0] * timeStep);
             Position[1] += (long)Math.Round(Velocity[1] * timeStep);
         }
 
-        private void CalculateNewVelocity(double timeStep)
+        private void UpdateVelocity(double timeStep)
         {
             Velocity[0] += acceleration[0] * timeStep;
             Velocity[1] += acceleration[1] * timeStep;
         }
 
-        protected virtual void CalculateAcceleration(CelestialObject[] objects)
+        /// <summary>
+        /// Calculates new acceleration.
+        /// </summary>
+        /// <param name="objects">Objects to be used in calculations</param>
+        protected virtual void CalculateAcceleration()
         {
             acceleration = new double[] { 0, 0 };
             double dX, dY, r2, a;                                       //dX, dY - relative position vector components, r2 s- quare of distance, a - temporary value 
 
-            foreach (CelestialObject obj in objects)
+            foreach (CelestialObject obj in CalculatableObjects)
             {
                 //must test if checking for each object won't be slower than just calculating acceleration from itself
                 //probably with less objects it will be faster to do the check, with more - to just calculate without checking
-                if (obj.IsCalculatable && obj != this)
-                {
-                    dX = obj.Position[0] - this.Position[0];
-                    dY = obj.Position[1] - this.Position[1];
-                    r2 = dX * dX + dY * dY;
-                    a = obj.StdGravPar / (Math.Sqrt(r2) * r2);
-                    acceleration[0] += a * dX;
-                    acceleration[1] += a * dY;
-                }
+                dX = obj.Position[0] - this.Position[0];
+                dY = obj.Position[1] - this.Position[1];
+                r2 = dX * dX + dY * dY;
+                a = obj.StdGravPar / (Math.Sqrt(r2) * r2);
+                acceleration[0] += a * dX;
+                acceleration[1] += a * dY;
             }
         }
     }

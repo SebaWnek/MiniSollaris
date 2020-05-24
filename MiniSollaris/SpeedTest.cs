@@ -23,14 +23,14 @@ namespace MiniSollaris
             stopwatch = new Stopwatch();
         }
 
-        public void Test(Window window, bool runSerial, bool runParallel, bool runThreaded, bool runThreadedPO, bool runThreadedSlim, string[] info)
+        public void Test(Window window, bool runSerial, bool runParallel, bool runThreaded, bool runThreadedWithLocks, bool runThreadedPO, bool runThreadedSlim, string[] additionalInfo)
         {
             using (FileStream fs = new FileStream("testLog.txt", FileMode.Append))
             using (StreamWriter writer = new StreamWriter(fs))
             {
                 writer.WriteLine($"Time of test: {DateTime.Now}");
-                foreach (string str in info) writer.WriteLine(str);
-                long serial = 0, parallel = 0, threaded = 0, threadedPerObj = 0, threadedSlim = 0;
+                foreach (string str in additionalInfo) writer.WriteLine(str);
+                long serial = 0, parallel = 0, threaded = 0, threadedWithLocks =0, threadedPerObj = 0, threadedSlim = 0;
                 //window.WindowState = WindowState.Minimized;
                 if (runSerial)
                 {
@@ -45,6 +45,11 @@ namespace MiniSollaris
                 if (runThreaded)
                 {
                     threaded = RunThreaded();
+                    Debug.WriteLine("Threaded test result:   " + threaded);
+                }
+                if (runThreadedWithLocks)
+                {
+                    threadedWithLocks = RunThreadedWithLocks();
                     Debug.WriteLine("Threaded test result:   " + threaded);
                 }
                 if (runThreadedPO)
@@ -66,6 +71,11 @@ namespace MiniSollaris
                 {
                     Debug.WriteLine("Threaded speed up:      " + (double)serial / (double)threaded);
                     writer.WriteLine("Threaded speed up:      " + (double)serial / (double)threaded);
+                }
+                if (runThreadedWithLocks)
+                {
+                    Debug.WriteLine("Threaded with locks speed up:      " + (double)serial / (double)threadedWithLocks);
+                    writer.WriteLine("Threaded with locks speed up:      " + (double)serial / (double)threadedWithLocks);
                 }
                 if (runThreadedPO)
                 {
@@ -93,6 +103,11 @@ namespace MiniSollaris
                     Debug.WriteLine("Threaded test result:   " + threaded);
                     writer.WriteLine("Threaded test result:   " + threaded);
                 }
+                if (runThreadedWithLocks)
+                {
+                    Debug.WriteLine("Threaded test result:   " + threadedWithLocks);
+                    writer.WriteLine("Threaded with locks test result:   " + threadedWithLocks);
+                }
                 if (runThreadedPO)
                 {
                     Debug.WriteLine("ThreadedPO test result:   " + threadedPerObj);
@@ -114,6 +129,15 @@ namespace MiniSollaris
             stopwatch.Reset();
             stopwatch.Start();
             Thread[] threads = system.StartThreadsPerCoreCounted(count);
+            foreach (Thread thread in threads) thread.Join();
+            stopwatch.Stop();
+            return stopwatch.ElapsedMilliseconds;
+        }
+        public long RunThreadedWithLocks()
+        {
+            stopwatch.Reset();
+            stopwatch.Start();
+            Thread[] threads = system.StartThreadsPerCoreCountedWithLocker(count);
             foreach (Thread thread in threads) thread.Join();
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;

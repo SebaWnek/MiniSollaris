@@ -11,6 +11,12 @@ namespace MiniSollaris
     {
         static double G { get; set; } = 6.6743015E-11;
 
+        /// <summary>
+        /// Changes polar position coordinates to cartesian coordinates
+        /// </summary>
+        /// <param name="distance">Polar distance</param>
+        /// <param name="angle">Polar angle</param>
+        /// <returns>Cartesian coordinates</returns>
         public static long[] PositionPolarToCartesian(long distance, double angle)
         {
             long[] result = new long[2];
@@ -18,7 +24,13 @@ namespace MiniSollaris
             result[1] = (long)(distance * Math.Sin(angle));
             return result;
         }
-
+        /// <summary>
+        /// Calculates velocity vector assuming 90 deg + deviation angle relative to radius direction of movement.
+        /// </summary>
+        /// <param name="velocity">Scalar value of velocity</param>
+        /// <param name="angle">Polar angle of object</param>
+        /// <param name="angleDeviation">Angle between direction prepenicular to radius and direction of movement</param>
+        /// <returns></returns>
         public static double[] VelocityPolarToCartesian(double velocity, double angle, double angleDeviation)
         {
             double[] result = new double[2];
@@ -28,12 +40,23 @@ namespace MiniSollaris
 
             return result;
         }
-
+        /// <summary>
+        /// Calculates orbital velocity when orbiting much hevier body.
+        /// </summary>
+        /// <param name="mass">Orbited body mass</param>
+        /// <param name="distance">Distance</param>
+        /// <returns></returns>
         public static double OrbitalVelocityFromMass(double mass, long distance)
         {
             return Math.Sqrt(G * mass / distance);
         }
-
+        /// <summary>
+        /// Calculates approximate orbital velocity when orbiting body of comparable mass.
+        /// </summary>
+        /// <param name="mass1">Orbitning body mass</param>
+        /// <param name="mass2">Orbited body mass</param>
+        /// <param name="distance">Distance</param>
+        /// <returns></returns>
         public static double OrbitalVelocityFromMass(double mass1, double mass2, long distance)
         {
             return Math.Sqrt(G * mass1 / distance) + Math.Sqrt(G * mass2 / distance);

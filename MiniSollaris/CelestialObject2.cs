@@ -11,37 +11,37 @@ namespace MiniSollaris
     {
         public CelestialObject2(string name, double mass, bool isCalculatable, long radius, long[] position, double[] velocity, int imageSize = 2, Brush color = null)
             : base(name, mass, isCalculatable, radius, position, velocity, imageSize, color)
-            {
+        {
 
-            }
+        }
         public CelestialObject2(string name, double mass, bool isCalculatable, long radius, long distance, double angle, double andleDeviation, double speed, int imageSize = 2, Brush color = null)
-            :base(name, mass, isCalculatable, radius, distance, angle, andleDeviation, speed, imageSize, color)
+            : base(name, mass, isCalculatable, radius, distance, angle, andleDeviation, speed, imageSize, color)
         { }
-        protected override void CalculateAcceleration(CelestialObject[] objects)
+
+        /// <summary>
+        /// Calculates new acceleration.
+        /// Method taking into account sizes of objects. For now it allows avoiding calculation problems when objects are too close to each other, in future might be used for collision detection. 
+        /// </summary>
+        /// <param name="objects">Objects to use in calculations</param>
+        protected override void CalculateAcceleration()
         {
             acceleration = new double[] { 0, 0 };
             double dX, dY, r2, a;                                       //dX, dY - relative position vector components, r2 s- quare of distance, a - temporary value 
 
-
-            foreach (CelestialObject obj in objects)
+            foreach (CelestialObject obj in CalculatableObjects)
             {
-                //must test if checking for each object won't be slower than just calculating acceleration from itself
-                //probably with less objects it will be faster to do the check, with more - to just calculate without checking
-                if (obj.IsCalculatable && obj != this)
+                dX = obj.Position[0] - this.Position[0];
+                dY = obj.Position[1] - this.Position[1];
+                r2 = dX * dX + dY * dY;
+                if (r2 <= ((double)Radius + (double)obj.Radius) * ((double)Radius + (double)obj.Radius))
                 {
-                    dX = obj.Position[0] - this.Position[0];
-                    dY = obj.Position[1] - this.Position[1];
-                    r2 = dX * dX + dY * dY;
-                    if (r2 <= ((double)Radius + (double)obj.Radius)*((double)Radius + (double)obj.Radius)) 
-                    {
-                        return;
-                        //obj.Position = Position = new long[] { long.MaxValue, long.MaxValue };
-                        //obj.IsCalculatable = IsCalculatable = false;
-                    }
-                    a = obj.StdGravPar / (Math.Sqrt(r2) * r2);
-                    acceleration[0] += a * dX;
-                    acceleration[1] += a * dY;
+                    return;
+                    //obj.Position = Position = new long[] { long.MaxValue, long.MaxValue };
+                    //obj.IsCalculatable = IsCalculatable = false;
                 }
+                a = obj.StdGravPar / (Math.Sqrt(r2) * r2);
+                acceleration[0] += a * dX;
+                acceleration[1] += a * dY;
             }
         }
     }

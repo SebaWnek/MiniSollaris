@@ -7,13 +7,32 @@ using System.Windows.Media;
 
 namespace MiniSollaris
 {
+    /// <summary>
+    /// Generates new instance of solar system.
+    /// </summary>
     static class DataAccess
     {
+        /// <summary>
+        /// Used for calculation of orbital speed
+        /// </summary>
         static double centralMass = 1.9884E30;
+
+        /// <summary>
+        /// Initialize new solar system from JSON data
+        /// </summary>
+        /// <param name="path">Path to file</param>
+        /// <param name="timeStep">Time step used for calculations</param>
+        /// <returns>New instance of solar system based on JSON data</returns>
         static public SolarSystem InitializeFromJSON(string path, double timeStep)
         {
             return new SolarSystem(path, timeStep);
         }
+        /// <summary>
+        /// Initialize new solar system from hardcoded data.
+        /// </summary>
+        /// <param name="timeStep">Time step used for calculations</param>
+        /// <param name="randomCount">Number of random objects to be generaed</param>
+        /// <returns></returns>
         static public SolarSystem InitializeHardcodedSystem(double timeStep, int randomCount)
         {
             List<CelestialObject> tmpObjects = new List<CelestialObject>();
@@ -43,12 +62,16 @@ namespace MiniSollaris
             //tmpObjects.Add(new CelestialObject2("Sun2", 1E38, true, (long)1E7, (long)1.1E11, 3.5, 0, MathHelper.OrbitalVelocityFromMass(1E37, centralMass, (long)2E11) / 1.1, 15, Brushes.BlueViolet));
             //tmpObjects.Add(new CelestialObject2("Sun2", 1E38, true, (long)1E7, (long)1.7E11, 4.3, 0, MathHelper.OrbitalVelocityFromMass(1E37, centralMass, (long)2E11) / 1.1, 15, Brushes.DarkOliveGreen));
 
-            GenerateRandomObjectsPolar(tmpObjects, randomCount);
+            GenerateRandomObjectsPolar(ref tmpObjects, randomCount);
 
             return new SolarSystem(tmpObjects, timeStep);
         }
-
-        private static void GenerateRandomObjectsPolar(List<CelestialObject> tmpObjects, int count)
+        /// <summary>
+        /// Generates random objects based on local values. For future use those should not be hardcoded
+        /// </summary>
+        /// <param name="tmpObjects">List of objects for new ones to be attached to</param>
+        /// <param name="count">Number of random objects to be generaed</param>
+        private static void GenerateRandomObjectsPolar(ref List<CelestialObject> tmpObjects, int count)
         {
             Random rnd = new Random();
             double mass = 1;
@@ -71,7 +94,7 @@ namespace MiniSollaris
                 speed = speedMultiplier * (MathHelper.OrbitalVelocityFromMass(centralMass, mass, distance) + rnd.NextDouble() * speedVariance * (rnd.Next(0, 2) > 0 ? 1 : -1));
                 position = MathHelper.PositionPolarToCartesian(distance, angle);
                 velocity = MathHelper.VelocityPolarToCartesian(speed, angle, rnd.NextDouble() * angleVariance);
-                tmpObjects.Add(new CelestialObject2("test", mass, true, 2000000000, position, velocity));
+                tmpObjects.Add(new CelestialObject("test", mass, false, 2000000000, position, velocity));
             }
         }
     }
