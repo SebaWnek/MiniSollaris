@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace MiniSollaris
 {
+    /// <summary>
+    /// Helper class with other helper methods
+    /// </summary>
     static public class OtherHelper
     {
         /// <summary>

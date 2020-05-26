@@ -15,11 +15,20 @@ using System.Windows.Shapes;
 
 namespace MiniSollaris
 {
+    /// <summary>
+    /// Main class containing solar system objects and methods to calculate theit interactions and running simulation. 
+    /// </summary>
     class SolarSystem
     {
         public double TimeStep { get; set; }
-        public static double G { get; set; } = 6.6743015E-11; //Gravitational constant
-        internal CelestialObject[] Objects { get => objects; set => objects = value; }
+        /// <summary>
+        /// Gravitational constant
+        /// </summary>
+        public static double G { get; set; } = 6.6743015E-11;
+        /// <summary>
+        /// Read-only list of celestial objects in that solar system.
+        /// </summary>
+        public CelestialObject[] Objects { get => objects; }
         public int ObjectsCount { get => objects.Length; }
 
         private CelestialObject[] objects;
@@ -27,31 +36,45 @@ namespace MiniSollaris
         private double[,,] forces; //forces betweeen each planet
         private double[,] forcesSum;
 
-
+        /// <summary>
+        /// Constructor for generating new solar system object from provided array of objects.
+        /// </summary>
+        /// <param name="obj">Array of objects</param>
+        /// <param name="timeStep">Time step of calculations</param>
         public SolarSystem(CelestialObject[] obj, double timeStep)
         {
             TimeStep = timeStep;
-            Objects = obj;
+            objects = obj;
             CalculateContinuousStepsGMms();
             forces = new double[objects.Length, objects.Length, 2];
             forcesSum = new double[objects.Length, 2];
             AssignCalculatableObjects();
         }
 
+        /// <summary>
+        /// Constructor for generating new solar system object from provided list of objects.
+        /// </summary>
+        /// <param name="obj">Array of objects</param>
+        /// <param name="timeStep">Time step of calculations</param>
         public SolarSystem(List<CelestialObject> obj, double timeStep)
         {
             TimeStep = timeStep;
-            Objects = obj.ToArray();
+            objects = obj.ToArray();
             CalculateContinuousStepsGMms();
             forces = new double[objects.Length, objects.Length, 2];
             forcesSum = new double[objects.Length, 2];
             AssignCalculatableObjects();
         }
 
+        /// <summary>
+        /// Constructor for creating new solar system from JSON file
+        /// </summary>
+        /// <param name="path">Path to file</param>
+        /// <param name="timeStep">Timestep of calculations</param>
         public SolarSystem(string path, double timeStep)
         {
             TimeStep = timeStep;
-            Objects = Deserialize(path);
+            objects = JSONHelpers.Deserialize(path);
             CalculateContinuousStepsGMms();
             forces = new double[objects.Length, objects.Length, 2];
             forcesSum = new double[objects.Length, 2];
@@ -60,6 +83,41 @@ namespace MiniSollaris
 
         #region Threaded slim
 
+        /// <summary>
+        /// Starts continuous simulation, that will stop after required number of steps calculated.
+        /// </summary>
+        /// <param name="steps">Number of calculation steps to be performed</param>
+        /// <returns>Array of threads that can be joined for continuation after calculation</returns>
+        public Thread[] StartThreadsSlim(int steps)
+        {
+            int procCount = Environment.ProcessorCount;
+            int objCount = objects.Length;
+            int count = procCount <= objCount ? procCount : objCount;
+            List<CelestialObject>[] objPerThread = DivideObjectsPerThreadsSlim(count);
+            AssignCalculatableObjectsSlim();
+            Thread[] threads = GenerateThreadsSlim(objPerThread, steps);
+            foreach (Thread thread in threads) thread.Start();
+            return threads;
+        }
+
+        /// <summary>
+        /// Starts continuous simulation, that will stop only on callation token.
+        /// </summary>
+        /// <param name="token">Cancellation token to stop simulation</param>
+        public void StartThreadsSlim(CancellationToken token)
+        {
+            int procCount = Environment.ProcessorCount;
+            int objCount = objects.Length;
+            int count = procCount <= objCount ? procCount : objCount;
+            List<CelestialObject>[] objPerThread = DivideObjectsPerThreadsSlim(count);
+            AssignCalculatableObjectsSlim();
+            Thread[] threads = GenerateThreadsSlim(objPerThread, token);
+            foreach (Thread thread in threads) thread.Start();
+        }
+
+        /// <summary>
+        /// Calculates 2d array of gravitational constant times masses of both objects to be used in further calculaitons.
+        /// </summary>
         private void CalculateContinuousStepsGMms()
         {
             int count = objects.Length;
@@ -73,6 +131,30 @@ namespace MiniSollaris
             }
         }
 
+        /// <summary>
+        /// Assigns objects to calculate forced from to each object.
+        /// </summary>
+        /// <remarks>
+        /// Assigns only objects following each object in objects array, as each object is calculating forces in both ways, to half the number of calculaitons needed. 
+        /// </remarks>
+        private void AssignCalculatableObjectsSlim()
+        {
+            for (int i = 0; i < objects.Length; i++)
+            {
+                objects[i].Number = i;
+                objects[i].CalculatableObjects = objects.Skip(i + 1).Take(objects.Length - (i + 1)).Where(k => k.IsCalculatable == true).ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Assigns objects to threads so that each thread has similar amount of calculations.
+        /// </summary>
+        /// <remarks>
+        /// Each object has declining number of objects to calculate forces from. For exaple - 3, 2, 1, 0. 
+        /// This method for 2 threads would divide them in pars 3, 0 and 2, 1, so each thread should have balanced workload.
+        /// </remarks>
+        /// <param name="count">Number of threads</param>
+        /// <returns>Array of lists of objects for each thread</returns>
         private List<CelestialObject>[] DivideObjectsPerThreadsSlim(int count)
         {
             int objCount = objects.Length;
@@ -89,45 +171,55 @@ namespace MiniSollaris
             return objPerThread;
         }
 
-        private void AssignCalculatableObjectsSlim()
+        /// <summary>
+        /// Generates threads equal in number to CPU cores count, that will stop only after cancellation by cancellation token.
+        /// </summary>
+        /// <param name="objPerThread">Array of lists containing objects intended for each thread</param>
+        /// <param name="token">Cancellation token to stop simulation</param>
+        /// <returns>Array of threads to be started</returns>
+        private Thread[] GenerateThreadsSlim(List<CelestialObject>[] objPerThread, CancellationToken token)
         {
-            for (int i = 0; i < objects.Length; i++)
+            Barrier barrier = new Barrier(objPerThread.Length);
+            Thread[] threads = new Thread[objPerThread.Length];
+            for (int i = 0; i < objPerThread.Length; i++)
             {
-                objects[i].Number = i;
-                objects[i].CalculatableObjects = objects.Skip(i + 1).Take(objects.Length - (i + 1)).Where(k => k.IsCalculatable == true).ToArray();
+                int current = i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsSlim(objPerThread[current], barrier, token); })
+                {
+                    Name = "Thread " + i
+                };
             }
+            return threads;
         }
 
-        private void CalculateForces(CelestialObject obj)
+        /// <summary>
+        /// Generates threads equal in number to CPU cores count, that will stop after required number of steps calculated.
+        /// </summary>
+        /// <param name="objPerThread">Array of lists containing objects intended for each thread</param>
+        /// <param name="steps">Number of steps to be calculated</param>
+        /// <returns>Array of threads that can be joined for continuation after calculation</returns>
+        private Thread[] GenerateThreadsSlim(List<CelestialObject>[] objPerThread, int steps)
         {
-            int num = obj.Number;
-            double dX, dY, r2, F;
-            for (int i = num + 1; i < objects.Length; i++)
+            Barrier barrier = new Barrier(objPerThread.Length);
+            Thread[] threads = new Thread[objPerThread.Length];
+            for (int i = 0; i < objPerThread.Length; i++)
             {
-                dX = objects[i].Position[0] - obj.Position[0];
-                dY = objects[i].Position[1] - obj.Position[1];
-                r2 = dX * dX + dY * dY;
-                F = gMms[obj.Number, i] / (Math.Sqrt(r2) * r2);
-                forces[num, i, 0] = F * dX;
-                forces[num, i, 1] = F * dY;
-                forces[i, num, 0] = -forces[num, i, 0];
-                forces[i, num, 1] = -forces[num, i, 1];
+                int current = i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsSlim(objPerThread[current], barrier, steps); })
+                {
+                    Name = "Thread " + i
+                };
             }
+            return threads;
         }
 
-        private void UpdatePositions(CelestialObject obj)
-        {
-            int num = obj.Number;
-            double[] force = new double[2];
-            for (int i = 0; i < objects.Length; i++)
-            {
-                force[0] += forces[num, i, 0];
-                force[1] += forces[num, i, 1];
-            }
-            obj.Position[0] += (long)(TimeStep * (obj.Velocity[0] + TimeStep * force[0] / obj.Mass));
-            obj.Position[1] += (long)(TimeStep * (obj.Velocity[0] + TimeStep * force[1] / obj.Mass));
-        }
-
+        /// <summary>
+        /// Calculaties selected objects until cancelled by cancellation token.
+        /// Running one per each thread with assigned part of objects.
+        /// </summary>
+        /// <param name="obj">Objects assigned to this thread.</param>
+        /// <param name="barrier">Barrier for synchronizing calculation steps between threads</param>
+        /// <param name="token">Cancellation token</param>
         private void CalculateContinuousStepsSlim(IEnumerable<CelestialObject> obj, Barrier barrier, CancellationToken token)
         {
             int objCount = obj.Count();
@@ -148,6 +240,13 @@ namespace MiniSollaris
             }
         }
 
+        /// <summary>
+        /// Calculaties selected objects predefined number of times.
+        /// Running one per each thread with assigned part of objects.
+        /// </summary>
+        /// <param name="obj">Objects assigned to this thread.</param>
+        /// <param name="barrier">Barrier for synchronizing calculation steps between threads</param>
+        /// <param name="steps">Number of calculation steps to be counted</param>
         private void CalculateContinuousStepsSlim(IEnumerable<CelestialObject> obj, Barrier barrier, int steps)
         {
             int objCount = obj.Count();
@@ -167,53 +266,42 @@ namespace MiniSollaris
             }
         }
 
-        public void StartThreadsSlim(CancellationToken token)
+        /// <summary>
+        /// Calculates forces exerted on selected object, and, according to Newton's III law of motion, forces exerted on other objects. 
+        /// </summary>
+        /// <param name="obj">Object to be calculated</param>
+        private void CalculateForces(CelestialObject obj)
         {
-            int procCount = Environment.ProcessorCount;
-            int objCount = objects.Length;
-            int count = procCount <= objCount ? procCount : objCount;
-            Barrier barrier = new Barrier(count);
-            List<CelestialObject>[] objPerThread = DivideObjectsPerThreadsSlim(count);
-            AssignCalculatableObjectsSlim();
-            Thread[] threads = GenerateThreadsSlim(objPerThread, token);
-            foreach (Thread thread in threads) thread.Start();
-        }
-        private Thread[] GenerateThreadsSlim(List<CelestialObject>[] objPerThread, CancellationToken token)
-        {
-            Barrier barrier = new Barrier(objPerThread.Length);
-            Thread[] threads = new Thread[objPerThread.Length];
-            for (int i = 0; i < objPerThread.Length; i++)
+            int num = obj.Number;
+            double dX, dY, r2, F;
+            for (int i = num + 1; i < objects.Length; i++)
             {
-                int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousStepsSlim(objPerThread[current], barrier, token); });
-                threads[i].Name = "Thread " + i;
+                dX = objects[i].Position[0] - obj.Position[0];
+                dY = objects[i].Position[1] - obj.Position[1];
+                r2 = dX * dX + dY * dY;
+                F = gMms[obj.Number, i] / (Math.Sqrt(r2) * r2);
+                forces[num, i, 0] = F * dX;
+                forces[num, i, 1] = F * dY;
+                forces[i, num, 0] = -forces[num, i, 0];
+                forces[i, num, 1] = -forces[num, i, 1];
             }
-            return threads;
         }
 
-        public Thread[] StartThreadsSlim(int steps)
+        /// <summary>
+        /// Updates positions on objects based on forces exerted on it.
+        /// </summary>
+        /// <param name="obj">Object to be calculated</param>
+        private void UpdatePositions(CelestialObject obj)
         {
-            int procCount = Environment.ProcessorCount;
-            int objCount = objects.Length;
-            int count = procCount <= objCount ? procCount : objCount;
-            Barrier barrier = new Barrier(count);
-            List<CelestialObject>[] objPerThread = DivideObjectsPerThreadsSlim(count);
-            AssignCalculatableObjectsSlim();
-            Thread[] threads = GenerateThreadsSlim(objPerThread, steps);
-            foreach (Thread thread in threads) thread.Start();
-            return threads;
-        }
-        private Thread[] GenerateThreadsSlim(List<CelestialObject>[] objPerThread, int steps)
-        {
-            Barrier barrier = new Barrier(objPerThread.Length);
-            Thread[] threads = new Thread[objPerThread.Length];
-            for (int i = 0; i < objPerThread.Length; i++)
+            int num = obj.Number;
+            double[] force = new double[2];
+            for (int i = 0; i < objects.Length; i++)
             {
-                int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousStepsSlim(objPerThread[current], barrier, steps); });
-                threads[i].Name = "Thread " + i;
+                force[0] += forces[num, i, 0];
+                force[1] += forces[num, i, 1];
             }
-            return threads;
+            obj.Position[0] += (long)(TimeStep * (obj.Velocity[0] + TimeStep * force[0] / obj.Mass));
+            obj.Position[1] += (long)(TimeStep * (obj.Velocity[0] + TimeStep * force[1] / obj.Mass));
         }
         #endregion
 
@@ -298,8 +386,10 @@ namespace MiniSollaris
             for (int i = 0; i < objPerThread.Length; i++)
             {
                 int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousStepsWithLocker(objPerThread[current], barrier, token, lockers[current]); });
-                threads[i].Name = "Thread " + i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsWithLocker(objPerThread[current], barrier, token, lockers[current]); })
+                {
+                    Name = "Thread " + i
+                };
             }
             return (threads, lockers);
         }
@@ -309,7 +399,7 @@ namespace MiniSollaris
         /// Intended only for benchmark use, to simulate overhead of locking each step.
         /// </summary>
         /// <param name="objPerThread">Array of lists containing objects intended for each thread</param>
-        /// <param name="token">Cancellation token to stop simulation</param>
+        /// <param name="steps">number of steps to be calculated</param>
         /// <returns>Array of threads that can be joined for continuation after calculation</returns>
         private Thread[] GenerateThreadsWithLocker(List<CelestialObject>[] objPerThread, int steps)
         {
@@ -323,8 +413,10 @@ namespace MiniSollaris
             for (int i = 0; i < objPerThread.Length; i++)
             {
                 int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousStepsWithLocker(objPerThread[current], barrier, steps, lockers[current]); });
-                threads[i].Name = "Thread " + i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsWithLocker(objPerThread[current], barrier, steps, lockers[current]); })
+                {
+                    Name = "Thread " + i
+                };
             }
             return threads;
         }
@@ -405,11 +497,11 @@ namespace MiniSollaris
             int procCount = Environment.ProcessorCount;
             int objCount = objects.Length;
             int count = procCount <= objCount ? procCount : objCount;
-            Barrier barrier = new Barrier(count);
             List<CelestialObject>[] objPerThread = DivideObjectsPerThreads(count);
             Thread[] threads = GenerateThreads(objPerThread, token);
             foreach (Thread thread in threads) thread.Start();
         }
+
         /// <summary>
         /// Starts continuous simulation, that will stop after required number of steps calculated.
         /// </summary>
@@ -420,7 +512,6 @@ namespace MiniSollaris
             int procCount = Environment.ProcessorCount;
             int objCount = objects.Length;
             int count = procCount <= objCount ? procCount : objCount;
-            Barrier barrier = new Barrier(count);
             List<CelestialObject>[] objPerThread = DivideObjectsPerThreads(count);
             Thread[] threads = GenerateThreads(objPerThread, steps);
             foreach (Thread thread in threads) thread.Start();
@@ -440,8 +531,10 @@ namespace MiniSollaris
             for (int i = 0; i < objPerThread.Length; i++)
             {
                 int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousSteps(objPerThread[current], barrier, token); });
-                threads[i].Name = "Thread " + i;
+                threads[i] = new Thread(() => { CalculateContinuousSteps(objPerThread[current], barrier, token); })
+                {
+                    Name = "Thread " + i
+                };
             }
             return threads;
         }
@@ -450,7 +543,7 @@ namespace MiniSollaris
         /// Generates threads equal in number to CPU cores count, that will stop after required number of steps calculated.
         /// </summary>
         /// <param name="objPerThread">Array of lists containing objects intended for each thread</param>
-        /// <param name="token">Cancellation token to stop simulation</param>
+        /// <param name="steps">Number of steps to be calculated</param>
         /// <returns>Array of threads that can be joined for continuation after calculation</returns>
         private Thread[] GenerateThreads(List<CelestialObject>[] objPerThread, int steps)
         {
@@ -459,8 +552,10 @@ namespace MiniSollaris
             for (int i = 0; i < objPerThread.Length; i++)
             {
                 int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousSteps(objPerThread[current], barrier, steps); });
-                threads[i].Name = "Thread " + i;
+                threads[i] = new Thread(() => { CalculateContinuousSteps(objPerThread[current], barrier, steps); })
+                {
+                    Name = "Thread " + i
+                };
             }
             return threads;
         }
@@ -556,8 +651,10 @@ namespace MiniSollaris
             for (int i = 0; i < objPerThread.Length; i++)
             {
                 int current = i;
-                threads[i] = new Thread(() => { CalculateContinuousStepsInCycles(objPerThread[current], barrier, token, stepsPerCycle, locker); });
-                threads[i].Name = "Thread " + i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsInCycles(objPerThread[current], barrier, token, stepsPerCycle, locker); })
+                {
+                    Name = "Thread " + i
+                };
             }
             return threads;
         }
@@ -605,7 +702,6 @@ namespace MiniSollaris
         /// <param name="steps">Number of steps to calculate</param>
         public Thread[] StartThreadsPerThreadCounted(int steps)
         {
-            int count = objects.Length;
             Thread[] threads = GenerateThreadsPerObjectCounted(steps);
             foreach (Thread thread in threads) thread.Start();
             return threads;
@@ -625,8 +721,10 @@ namespace MiniSollaris
             {
                 int current = i;
                 CelestialObject currentObject = objects[i];
-                threads[i] = new Thread(() => { CalculateContinuousStepsCounted(currentObject, barrier, steps); });
-                threads[i].Name = "Thread " + i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsCounted(currentObject, barrier, steps); })
+                {
+                    Name = "Thread " + i
+                };
             }
             return threads;
         }
@@ -681,30 +779,8 @@ namespace MiniSollaris
 
         #endregion
 
-
         #region Helper methods
-        /// <summary>
-        /// Serializes Solar System to JSON for future use
-        /// </summary>
-        /// <param name="path">Path to file</param>
-        public void Serialize(string path)
-        {
-            string jsonString = JsonSerializer.Serialize(Objects, new JsonSerializerOptions() { WriteIndented = true });
-            File.WriteAllText(path, jsonString);
-        }
-        /// <summary>
-        /// Deserializes Solar System from JSON file.
-        /// Intended to be used only in class constructor!
-        /// </summary>
-        /// <param name="path">Path to JSON file</param>
-        /// <returns>Array of Celestial Objects</returns>
-        public static CelestialObject[] Deserialize(string path)
-        {
-            CelestialObject[] result;
-            string jsonString = File.ReadAllText(path);
-            result = JsonSerializer.Deserialize<CelestialObject[]>(jsonString);
-            return result;
-        }
+
         /// <summary>
         /// Select object by its name
         /// </summary>

@@ -11,7 +11,8 @@
         Loaded="Window_Loaded"
         WindowStyle="None">
     <Canvas x:Name="background" Background="Black">
-        <Button x:Name="stopButton" Canvas.Right ="10" Canvas.Bottom="10" Content="Stop" Click="stopButton_Click"/>
-        <Button x:Name="startButton" Canvas.Right ="50" Canvas.Bottom="10" Content="Start" Click="startButton_Click"/>
+        <Button x:Name="exitButton" Canvas.Right ="10" Canvas.Bottom="10" Content="Exit" Click="ExitButton_Click"/>
+        <Button x:Name="stopButton" Canvas.Right ="50" Canvas.Bottom="10" Content="Stop" Click="StopButton_Click"/>
+        <Button x:Name="startButton" Canvas.Right ="90" Canvas.Bottom="10" Content="Start" Click="StartButton_Click"/>
     </Canvas>
 </Window>

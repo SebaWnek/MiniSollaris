@@ -20,9 +20,11 @@ namespace MiniSollaris
 
         /// <summary>
         /// Calculates new acceleration.
-        /// Method taking into account sizes of objects. For now it allows avoiding calculation problems when objects are too close to each other, in future might be used for collision detection. 
+        /// Method taking into account sizes of objects.  
         /// </summary>
-        /// <param name="objects">Objects to use in calculations</param>
+        /// <remarks>
+        /// For now it allows avoiding calculation problems when objects are too close to each other, in future might be used for collision detection.  
+        /// </remarks>
         protected override void CalculateAcceleration()
         {
             acceleration = new double[] { 0, 0 };

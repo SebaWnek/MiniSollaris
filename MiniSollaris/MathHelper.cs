@@ -7,6 +7,9 @@ using System.Windows.Media.Animation;
 
 namespace MiniSollaris
 {
+    /// <summary>
+    /// Helper class for calculations
+    /// </summary>
     public static class MathHelper
     {
         static double G { get; set; } = 6.6743015E-11;

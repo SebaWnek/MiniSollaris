@@ -11,8 +11,8 @@ namespace MiniSollaris
     /// </summary>
     class WindowCalculatorHelper
     {
-        double windowHeight;
-        double windowWidth;
+        readonly double windowHeight;
+        readonly double windowWidth;
         long horizontalRange;
         double scale;
         long[] viewCenter;
@@ -51,6 +51,7 @@ namespace MiniSollaris
             result[1] = -center[1];
             return result;
         }
+
         /// <summary>
         /// Calculates screen coordinates from world coordinates.
         /// </summary>
@@ -63,6 +64,7 @@ namespace MiniSollaris
             result[1] = windowHeight / 2 - scale * (coordinates[1] + translationVector[1]);
             return result;
         }
+
         /// <summary>
         /// Calculates new scale to be used in successive calculations after changing horizontal range.
         /// </summary>
@@ -72,6 +74,7 @@ namespace MiniSollaris
             horizontalRange = range;
             scale = CalculateNewScale();
         }
+
         /// <summary>
         /// Calculates new scale to be used in successive calculations.
         /// </summary>
@@ -80,6 +83,7 @@ namespace MiniSollaris
         {
             return windowWidth / horizontalRange;
         }
+
         /// <summary>
         /// Changes center of view.
         /// </summary>

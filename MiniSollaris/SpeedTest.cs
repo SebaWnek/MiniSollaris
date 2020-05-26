@@ -10,11 +10,14 @@ using System.IO;
 
 namespace MiniSollaris
 {
+    /// <summary>
+    /// Temporary class for benchmarking different algorithms.
+    /// </summary>
     class SpeedTest
     {
-        private SolarSystem system;
-        private int count;
-        Stopwatch stopwatch;
+        private readonly SolarSystem system;
+        private readonly int count;
+        readonly Stopwatch stopwatch;
 
         public SpeedTest(SolarSystem sys, int c)
         {
@@ -23,7 +26,13 @@ namespace MiniSollaris
             stopwatch = new Stopwatch();
         }
 
-        public void Test(Window window, bool runSerial, bool runParallel, bool runThreaded, bool runThreadedWithLocks, bool runThreadedPO, bool runThreadedSlim, string[] additionalInfo)
+        public void Test(bool runSerial,
+                         bool runParallel,
+                         bool runThreaded,
+                         bool runThreadedWithLocks,
+                         bool runThreadedPO,
+                         bool runThreadedSlim,
+                         string[] additionalInfo)
         {
             using (FileStream fs = new FileStream("testLog.txt", FileMode.Append))
             using (StreamWriter writer = new StreamWriter(fs))
@@ -31,7 +40,6 @@ namespace MiniSollaris
                 writer.WriteLine($"Time of test: {DateTime.Now}");
                 foreach (string str in additionalInfo) writer.WriteLine(str);
                 long serial = 0, parallel = 0, threaded = 0, threadedWithLocks =0, threadedPerObj = 0, threadedSlim = 0;
-                //window.WindowState = WindowState.Minimized;
                 if (runSerial)
                 {
                     serial = RunSerial();

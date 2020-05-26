@@ -18,6 +18,11 @@ namespace MiniSollaris
         static double centralMass = 1.9884E30;
 
         /// <summary>
+        /// Used for calculation of orbital speed
+        /// </summary>
+        public static double CentralMass { get => centralMass; set => centralMass = value; }
+
+        /// <summary>
         /// Initialize new solar system from JSON data
         /// </summary>
         /// <param name="path">Path to file</param>
@@ -27,6 +32,7 @@ namespace MiniSollaris
         {
             return new SolarSystem(path, timeStep);
         }
+
         /// <summary>
         /// Initialize new solar system from hardcoded data.
         /// </summary>
@@ -35,18 +41,20 @@ namespace MiniSollaris
         /// <returns></returns>
         static public SolarSystem InitializeHardcodedSystem(double timeStep, int randomCount)
         {
-            List<CelestialObject> tmpObjects = new List<CelestialObject>();
-            //                                  Name        Mass        Calc? Radius                 Position X         Position Y                         Vel X    Vel Y       Size Color
-            tmpObjects.Add(new CelestialObject("Sun", 1.9884E30, true, 695700000, new long[] { 0, 0 }, new double[] { 0, 0 }, 20, Brushes.Yellow));
-            tmpObjects.Add(new CelestialObject("Mercury", 3.3011E23, true, 4880000, new long[] { 57909050000, 0 }, new double[] { 0, 47362 }, 4, Brushes.Brown));
-            tmpObjects.Add(new CelestialObject("Venus", 4.867E24, true, 6051800, new long[] { (long)-1.0821E11, 0 }, new double[] { 0, -35020 }, 6, Brushes.Pink));
-            tmpObjects.Add(new CelestialObject("Earth", 5.97237E24, true, 6371000, new long[] { 0, 149598023000 }, new double[] { -29780, 0 }, 7, Brushes.Blue));
-            tmpObjects.Add(new CelestialObject("Mars", 6.4171E23, true, 3389500, new long[] { 0, (long)-2.2792E11 }, new double[] { 24070, 0 }, 5, Brushes.Red));
+            List<CelestialObject> tmpObjects = new List<CelestialObject>
+            {
+                //                  Name   Mass       Calc? Radius     Position X, Position Y Vel X, Vel Y         Size Color
+                new CelestialObject("Sun", 1.9884E30, true, 695700000, new long[] { 0, 0 }, new double[] { 0, 0 }, 20, Brushes.Yellow),
+                new CelestialObject("Mercury", 3.3011E23, true, 4880000, new long[] { 57909050000, 0 }, new double[] { 0, 47362 }, 4, Brushes.Brown),
+                new CelestialObject("Venus", 4.867E24, true, 6051800, new long[] { (long)-1.0821E11, 0 }, new double[] { 0, -35020 }, 6, Brushes.Pink),
+                new CelestialObject("Earth", 5.97237E24, true, 6371000, new long[] { 0, 149598023000 }, new double[] { -29780, 0 }, 7, Brushes.Blue),
+                new CelestialObject("Mars", 6.4171E23, true, 3389500, new long[] { 0, (long)-2.2792E11 }, new double[] { 24070, 0 }, 5, Brushes.Red),
 
-            tmpObjects.Add(new CelestialObject("Moon", 7.342E22, true, 1737400, new long[] { 384399999, 149598023000 }, new double[] { -29780, -1022 }, 3, Brushes.DarkGray));
+                new CelestialObject("Moon", 7.342E22, true, 1737400, new long[] { 384399999, 149598023000 }, new double[] { -29780, 1022 }, 3, Brushes.DarkGray),
 
-            tmpObjects.Add(new CelestialObject("Phobos", 1.072E16, true, 21000, new long[] { 9375000, (long)-2.2792E11 }, new double[] { 24070, -2138 }, 3, Brushes.Gray));
-            tmpObjects.Add(new CelestialObject("Deimos", 1.476E15, true, 12000, new long[] { -23458000, (long)-2.2792E11 }, new double[] { 24070, 1351 }, 3, Brushes.Orange));
+                new CelestialObject("Phobos", 1.072E16, true, 21000, new long[] { 9375000, (long)-2.2792E11 }, new double[] { 24070, 2138 }, 3, Brushes.Gray),
+                new CelestialObject("Deimos", 1.476E15, true, 12000, new long[] { -23458000, (long)-2.2792E11 }, new double[] { 24070, -1351 }, 3, Brushes.Orange)
+            };
 
             //tmpObjects.Add(new CelestialObject("Comet", 1, false, 1, 300000000000, 4, 1.2, 15000, 2, Brushes.Aquamarine));
 
@@ -66,9 +74,13 @@ namespace MiniSollaris
 
             return new SolarSystem(tmpObjects, timeStep);
         }
+
         /// <summary>
-        /// Generates random objects based on local values. For future use those should not be hardcoded
+        /// Generates random objects based on local values. 
         /// </summary>
+        /// <remarks>
+        /// For future use those should not be hardcoded, but for now for benchmarking purposes during development it's enough. 
+        /// </remarks>
         /// <param name="tmpObjects">List of objects for new ones to be attached to</param>
         /// <param name="count">Number of random objects to be generaed</param>
         private static void GenerateRandomObjectsPolar(ref List<CelestialObject> tmpObjects, int count)
@@ -82,16 +94,16 @@ namespace MiniSollaris
             int maxDistance = 470000000;
             long distance;
             double angle;
-            double angleVariance = 0.05;
+            double angleVariance = 0.5;
             double speed;
             double speedMultiplier = 1;
-            double speedVariance = 1000;
+            double speedVariance = 10000;
             for (int i = 0; i < count; i++)
             {
                 distance = (long)rnd.Next(minDistance, maxDistance) * DistanceMultiplier;
                 distance = (long)(distance * Math.Pow(rnd.Next(5,10),0.0001));
                 angle = rnd.NextDouble() * 2 * Math.PI;
-                speed = speedMultiplier * (MathHelper.OrbitalVelocityFromMass(centralMass, mass, distance) + rnd.NextDouble() * speedVariance * (rnd.Next(0, 2) > 0 ? 1 : -1));
+                speed = speedMultiplier * (MathHelper.OrbitalVelocityFromMass(CentralMass, mass, distance) + rnd.NextDouble() * speedVariance * (rnd.Next(0, 2) > 0 ? 1 : -1));
                 position = MathHelper.PositionPolarToCartesian(distance, angle);
                 velocity = MathHelper.VelocityPolarToCartesian(speed, angle, rnd.NextDouble() * angleVariance);
                 tmpObjects.Add(new CelestialObject("test", mass, false, 2000000000, position, velocity));
