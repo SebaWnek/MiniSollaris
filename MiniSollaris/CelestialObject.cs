@@ -10,22 +10,21 @@ using System.Windows.Shapes;
 
 namespace MiniSollaris
 {
-    class CelestialObject
+    public class CelestialObject
     {
         [JsonIgnore]
         public static double G { get; set; } = 6.6743015E-11; //Gravitational constant
         public string Name { get; set; }
         public double Mass { get; set; } //kg
-        [JsonIgnore]
         public double StdGravPar { get; set; } // Standard Gravitational Parameter = M * G
         public bool IsCalculatable { get; set; }
         public long Radius { get; set; } //m
         public long[] Position { get; set; } = { 0, 0 }; //m, m in X and Y directions
         public double[] Velocity { get; set; } = { 0, 0 };  //m/s, m/s in X and Y directions
-        
+
         public Ellipse Picture { get; set; }
         protected double[] acceleration = { 0, 0 };
-        [JsonIgnore]
+        private long[] newPositionRK = { 0, 0 };
         public int Number { get; set; }
         [JsonIgnore]
         public CelestialObject[] CalculatableObjects { get; set; }
@@ -34,7 +33,7 @@ namespace MiniSollaris
         {
             StdGravPar = G * Mass;
         }
-
+        
         /// <summary>
         /// New CelestialObject object.
         /// </summary>
@@ -246,6 +245,69 @@ namespace MiniSollaris
                 acceleration[0] += a * dX;
                 acceleration[1] += a * dY;
             }
+        }
+
+
+        private double[] CalculateAccelerationRK(long[] currentPosition)
+        {
+            double[] tmpAcceleration = new double[] { 0, 0 };
+            double dX, dY, r2, a;                                       //dX, dY - relative position vector components, r2 s- quare of distance, a - temporary value 
+
+            foreach (CelestialObject obj in CalculatableObjects)
+            {
+                dX = obj.Position[0] - currentPosition[0];
+                dY = obj.Position[1] - currentPosition[1];
+                r2 = dX * dX + dY * dY;
+                a = obj.StdGravPar / (Math.Sqrt(r2) * r2);
+                tmpAcceleration[0] += a * dX;
+                tmpAcceleration[1] += a * dY;
+            }
+            return tmpAcceleration;
+        }
+
+        public void CalculalteNewPositionRK(double timeStep)
+        {
+            long[] p1, p2, p3, p4;
+            double[] v1, v2, v3, v4, a1, a2, a3, a4;
+
+            p1 = Position;
+            v1 = Velocity;
+            a1 = CalculateAccelerationRK(p1);
+
+            p2 = new long[]   { Position[0] + (long)(v1[0] * timeStep / 2),
+                                Position[1] + (long)(v1[1] * timeStep / 2) };
+            v2 = new double[] { Velocity[0] +        a1[0] * timeStep / 2,
+                                Velocity[1] +        a1[1] * timeStep / 2 };
+            a2 = CalculateAccelerationRK(p2);
+
+            p3 = new long[]   { Position[0] + (long)(v2[0] * timeStep / 2),
+                                Position[1] + (long)(v2[1] * timeStep / 2) };
+            v3 = new double[] { Velocity[0] +        a2[0] * timeStep / 2,
+                                Velocity[1] +        a2[1] * timeStep / 2 };
+            a3 = CalculateAccelerationRK(p3);
+
+            p4 = new long[]   { Position[0] + (long)(v3[0] * timeStep),
+                                Position[1] + (long)(v3[1] * timeStep) };
+            v4 = new double[] { Velocity[0] +        a3[0] * timeStep,
+                                Velocity[1] +        a3[1] * timeStep };
+            a4 = CalculateAccelerationRK(p4);
+
+            newPositionRK = new long[]
+            {
+                Position[0] + (long)(timeStep * (v1[0] + 2 * v2[0] + 2* v3[0] + v4[0]) / 6),
+                Position[1] + (long)(timeStep * (v1[1] + 2 * v2[1] + 2* v3[1] + v4[1]) / 6)
+            };
+
+            Velocity = new double[]
+            {
+                Velocity[0] + timeStep * (a1[0] + 2*a2[0] +2*a3[0]+a4[0])/6,
+                Velocity[1] + timeStep * (a1[1] + 2*a2[1] +2*a3[1]+a4[1])/6
+            };
+        }
+
+        public void UpdatePositionRK()
+        {
+            Position = newPositionRK;
         }
     }
 }

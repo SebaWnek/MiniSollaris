@@ -27,8 +27,11 @@ namespace MiniSollaris
         }
 
         public void Test(bool runSerial,
+                         bool runSerialRK,
                          bool runParallel,
+                         bool runParallelRK,
                          bool runThreaded,
+                         bool runThreadedRK,
                          bool runThreadedWithLocks,
                          bool runThreadedPO,
                          bool runThreadedSlim,
@@ -39,21 +42,36 @@ namespace MiniSollaris
             {
                 writer.WriteLine($"Time of test: {DateTime.Now}");
                 foreach (string str in additionalInfo) writer.WriteLine(str);
-                long serial = 0, parallel = 0, threaded = 0, threadedWithLocks =0, threadedPerObj = 0, threadedSlim = 0;
+                long serial = 0, serialRK = 0, parallel = 0, parallelRK = 0, threaded = 0, threadedWithLocks =0, threadedRK = 0, threadedPerObj = 0, threadedSlim = 0;
                 if (runSerial)
                 {
                     serial = RunSerial();
                     Debug.WriteLine("Serial test result: " + serial);
+                }
+                if (runSerialRK)
+                {
+                    serialRK = RunSerialRK();
+                    Debug.WriteLine("SerialRK test result: " + serialRK);
                 }
                 if (runParallel)
                 {
                     parallel = RunParallel();
                     Debug.WriteLine("Parallel test result:   " + parallel);
                 }
+                if (runParallelRK)
+                {
+                    parallelRK = RunParallelRK();
+                    Debug.WriteLine("ParallelRK test result:   " + parallelRK);
+                }
                 if (runThreaded)
                 {
                     threaded = RunThreaded();
                     Debug.WriteLine("Threaded test result:   " + threaded);
+                }
+                if (runThreadedRK)
+                {
+                    threadedRK = RunThreadedRK();
+                    Debug.WriteLine("ThreadedRK test result:   " + threadedRK);
                 }
                 if (runThreadedWithLocks)
                 {
@@ -75,10 +93,20 @@ namespace MiniSollaris
                     Debug.WriteLine("Parallel speed up:      " + (double)serial / (double)parallel);
                     writer.WriteLine("Parallel speed up:      " + (double)serial / (double)parallel);
                 }
+                if (runParallelRK)
+                {
+                    Debug.WriteLine("ParallelRK speed up:      " + (double)serialRK / (double)parallelRK);
+                    writer.WriteLine("ParallelRK speed up:      " + (double)serialRK / (double)parallelRK);
+                }
                 if (runThreaded)
                 {
                     Debug.WriteLine("Threaded speed up:      " + (double)serial / (double)threaded);
                     writer.WriteLine("Threaded speed up:      " + (double)serial / (double)threaded);
+                }
+                if (runThreadedRK)
+                {
+                    Debug.WriteLine("ThreadedRK speed up:      " + (double)serialRK / (double)threadedRK);
+                    writer.WriteLine("ThreadedRK speed up:      " + (double)serialRK / (double)threadedRK);
                 }
                 if (runThreadedWithLocks)
                 {
@@ -101,15 +129,30 @@ namespace MiniSollaris
                     Debug.WriteLine("Serial test result: " + serial);
                     writer.WriteLine("Serial test result: " + serial);
                 }
+                if (runSerialRK)
+                {
+                    Debug.WriteLine("SerialRK test result: " + serialRK);
+                    writer.WriteLine("SerialRK test result: " + serialRK);
+                }
                 if (runParallel)
                 {
                     Debug.WriteLine("Parallel test result:   " + parallel);
                     writer.WriteLine("Parallel test result:   " + parallel);
                 }
+                if (runParallelRK)
+                {
+                    Debug.WriteLine("ParallelRK test result:   " + parallelRK);
+                    writer.WriteLine("ParallelRK test result:   " + parallelRK);
+                }
                 if (runThreaded)
                 {
                     Debug.WriteLine("Threaded test result:   " + threaded);
                     writer.WriteLine("Threaded test result:   " + threaded);
+                }
+                if (runThreadedRK)
+                {
+                    Debug.WriteLine("ThreadedRK test result:   " + threadedRK);
+                    writer.WriteLine("ThreadedRK test result:   " + threadedRK);
                 }
                 if (runThreadedWithLocks)
                 {
@@ -137,6 +180,15 @@ namespace MiniSollaris
             stopwatch.Reset();
             stopwatch.Start();
             Thread[] threads = system.StartThreadsPerCoreCounted(count);
+            foreach (Thread thread in threads) thread.Join();
+            stopwatch.Stop();
+            return stopwatch.ElapsedMilliseconds;
+        }
+        public long RunThreadedRK()
+        {
+            stopwatch.Reset();
+            stopwatch.Start();
+            Thread[] threads = system.StartThreadsPerCoreRK(count);
             foreach (Thread thread in threads) thread.Join();
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;
@@ -182,6 +234,17 @@ namespace MiniSollaris
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;
         }
+        public long RunSerialRK()
+        {
+            stopwatch.Reset();
+            stopwatch.Start();
+            for (int i = 0; i < count; i++)
+            {
+                system.CalculateStepRK();
+            }
+            stopwatch.Stop();
+            return stopwatch.ElapsedMilliseconds;
+        }
 
         public long RunParallel()
         {
@@ -190,6 +253,17 @@ namespace MiniSollaris
             for (int i = 0; i < count; i++)
             {
                 system.CalculateStepParallel();
+            }
+            stopwatch.Stop();
+            return stopwatch.ElapsedMilliseconds;
+        }
+        public long RunParallelRK()
+        {
+            stopwatch.Reset();
+            stopwatch.Start();
+            for (int i = 0; i < count; i++)
+            {
+                system.CalculateStepParallelRK();
             }
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;

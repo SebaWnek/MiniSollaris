@@ -12,7 +12,15 @@
         WindowStyle="None">
     <Canvas x:Name="background" Background="Black">
         <Button x:Name="exitButton" Canvas.Right ="10" Canvas.Bottom="10" Content="Exit" Click="ExitButton_Click"/>
-        <Button x:Name="stopButton" Canvas.Right ="50" Canvas.Bottom="10" Content="Stop" Click="StopButton_Click"/>
-        <Button x:Name="startButton" Canvas.Right ="90" Canvas.Bottom="10" Content="Start" Click="StartButton_Click"/>
+        <Button x:Name="stopButton" Canvas.Right ="40" Canvas.Bottom="10" Content="Stop" Click="StopButton_Click"/>
+        <Button x:Name="startButton" Canvas.Right ="75" Canvas.Bottom="10" Content="Start" Click="StartButton_Click"/>
+        <Button x:Name="addGraphsButton" Canvas.Right ="10" Canvas.Bottom="40" Content="Add graphs" Click="AddGraphsButton_Click"/>
+        <Button x:Name="clearGraphButton" Canvas.Right ="85" Canvas.Bottom="40" Content="Clear graphs" Click="ClearGraphButton_Click"/>
+        <Button x:Name="stopGraphButton" Canvas.Right ="165" Canvas.Bottom="40" Content="Stop graphs" Click="StopGraphButton_Click"/>
+        <ListBox x:Name="planetListBox" Canvas.Right="10" Canvas.Top="10" Width="150" MinHeight="50" SelectionChanged="planetListBox_SelectionChanged"/>
+        <Slider x:Name="scaleSlider" Canvas.Bottom="10" Canvas.Left="10" Width="560" Minimum="1000" Maximum="1E6" Value="1000000000000" ValueChanged="scaleSlider_ValueChanged"/>
+        <!--<TextBox x:Name="scaleBox" Canvas.Bottom="10" Canvas.Left="420" Width="150" Text="{Binding ElementName=scaleSlider, Path=Value, Mode=TwoWay}"/>-->
+        <Label Content="Sqrt of max range:" Foreground="White" Canvas.Bottom="6" Canvas.Left="580"/>
+        <TextBox x:Name="rangeBox" Canvas.Bottom="10" Canvas.Left="650" Width="50" Text="{Binding ElementName=scaleSlider, Path=Maximum, Mode=TwoWay}"/>
     </Canvas>
 </Window>

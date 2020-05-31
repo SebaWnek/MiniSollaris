@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -12,9 +13,9 @@ using System.Windows.Shapes;
 
 namespace MiniSollaris
 {
-    static class JSONHelpers
-    {        
-        
+    public static class JSONHelpers
+    {
+
         /// <summary>
         /// Serializes Solar System to JSON for future use
         /// </summary>
@@ -22,10 +23,22 @@ namespace MiniSollaris
         /// <param name="path">Path to file</param>
         public static void Serialize(this SolarSystem system, string path)
         {
-            JsonSerializerOptions options = new JsonSerializerOptions();
-            options.WriteIndented = true;
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
             options.Converters.Add(new EclipseConverter());
             string jsonString = JsonSerializer.Serialize(system.Objects, options);
+            File.WriteAllText(path, jsonString);
+        }
+        public static void Serialize(this List<CelestialObject> system, string path)
+        {
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            options.Converters.Add(new EclipseConverter());
+            string jsonString = JsonSerializer.Serialize(system, options);
             File.WriteAllText(path, jsonString);
         }
         /// <summary>
@@ -50,9 +63,13 @@ namespace MiniSollaris
             {
                 Ellipse ellipse = new Ellipse();
                 var converter = new BrushConverter();
-                reader.
+                reader.Read();
+                reader.Read();
                 ellipse.Fill = (Brush)converter.ConvertFromString(reader.GetString());
+                reader.Read();
+                reader.Read();
                 ellipse.Width = ellipse.Height = reader.GetInt32();
+                reader.Read();
                 return ellipse;
             }
 
@@ -60,7 +77,7 @@ namespace MiniSollaris
             {
                 writer.WriteStartObject();
                 writer.WriteString("Color", value.Fill.ToString());
-                writer.WriteString("Size", value.Width.ToString());
+                writer.WriteNumber("Size", value.Width);
                 writer.WriteEndObject();
             }
         }

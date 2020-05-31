@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,12 +34,15 @@ namespace MiniSollaris
         readonly long horizontalRange = 1000000000000; //2AU
         CelestialObject selectedObject = null;
         long[] viewCenter = { 0, 0 };
-        readonly double timeStep = 0.2; //seconds
+        readonly double timeStep = 10; //seconds
         readonly int skipSteps = 1; //steps to skip for plot/simulation
         CancellationTokenSource tokenSource;
         DispatcherTimer timer;
         object locker;
         object[] lockers;
+        Polyline[] plots;
+        bool plotsOn = false;
+        bool loaded = false;
 
         WindowCalculatorHelper windowCalculatorHelper;
         SolarSystem system;
@@ -60,30 +64,61 @@ namespace MiniSollaris
             windowHeight = background.ActualHeight;
             windowWidth = background.ActualWidth;
             windowCalculatorHelper = new WindowCalculatorHelper(windowHeight, windowWidth, horizontalRange, new long[] { 0, 0 });
+            loaded = true;
 
-            //system = DataAccess.InitializeHardcodedSystem(timeStep, 10);
-            system = DataAccess.InitializeFromJSON("system", timeStep);
+            //system = DataAccess.InitializeHardcodedSystem(timeStep, 0);
+            system = DataAccess.InitializeFromJSON("system.json", timeStep);
             AddGraphics();
             RedrawAll();
+            AddPlots();
+            AddPlanetsToList();
             //system.Serialize("system");
-            //SelectNewCenter("Mars");
+
+            //SelectNewCenter("Sun");
             //SelectNewRange(150000000);
 
-            while (true)
-            {
-                await Task.Delay(5000);
-                SelectNewCenter("Mars");
-                SelectNewRange(150000000);
-                await Task.Delay(5000);
-                SelectNewCenter("Earth");
-                SelectNewRange(1500000000);
-                await Task.Delay(5000);
-                SelectNewCenter(new long[] { 0, 0 });
-                SelectNewRange(1000000000000);
-            }
-
-
+            //while (true)
+            //{
+            //    await Task.Delay(5000);
+            //    SelectNewCenter("Mars");
+            //    SelectNewRange(150000000);
+            //    await Task.Delay(5000);
+            //    SelectNewCenter("Earth");
+            //    SelectNewRange(1500000000);
+            //    await Task.Delay(5000);
+            //    SelectNewCenter(new long[] { 0, 0 });
+            //    SelectNewRange(1000000000000);
+            //}
+            //int days = 60;
+            //double testTimeStep = 10;
+            //int secondsPerDay = 86400;
+            //AccuracyBenchmark.RunTest(system, (int)(days*secondsPerDay / testTimeStep), (int)(days*secondsPerDay/testTimeStep), testTimeStep, testTimeStep, true, true, true, true);
             //Test();
+        }
+
+
+        private void AddPlots()
+        {
+            plots = new Polyline[system.ObjectsCount];
+            for(int i = 0; i < system.ObjectsCount; i++)
+            {
+                plots[i] = new Polyline();
+                plots[i].Stroke = system.Objects[i].Picture.Fill;
+                plots[i].Opacity = 0.5;
+                plots[i].StrokeThickness = 1;
+                background.Children.Add(plots[i]);
+            }
+        }
+
+        private void UpdatePlots()
+        {
+            if (plotsOn)
+            {
+                for (int i = 0; i < system.ObjectsCount; i++)
+                {
+                    plots[i].Points.Add(new Point(windowCalculatorHelper.CalculateScreenPosition(system.Objects[i].Position)[0], windowCalculatorHelper.CalculateScreenPosition(system.Objects[i].Position)[1]));
+                } 
+            }
         }
 
         /// <summary>
@@ -91,10 +126,10 @@ namespace MiniSollaris
         /// </summary>
         private void Test()
         {
-            int testSteps = 10000;
+            int testSteps = 1000000;
             SpeedTest test = new SpeedTest(system, testSteps);
             string[] info = { $"Time Step: {timeStep}", $"Test Steps: {testSteps}", $"Objects Count: {system.ObjectsCount}" };
-            test.Test(true, true, true, true, false, false, info);
+            test.Test(false,true,false,true,false,true,false,false,false,info);
         }
 
         #region Graphics
@@ -180,7 +215,7 @@ namespace MiniSollaris
         /// <summary>
         /// Starts simulation.
         /// </summary>
-        private void StartButton_Click(object sender, RoutedEventArgs e)
+        private async void StartButton_Click(object sender, RoutedEventArgs e)
         {
             tokenSource = new CancellationTokenSource();
             //await Animate(system.CalculateStep, tokenSource.Token);
@@ -242,6 +277,7 @@ namespace MiniSollaris
             OtherHelper.MultiLock(lockers, lockers.Length, () =>
             {
                 RedrawAll();
+                UpdatePlots();
             });
         }
         #endregion
@@ -310,7 +346,8 @@ namespace MiniSollaris
                 Interval = new TimeSpan(0, 0, 0, 0, 30)
             };
             timer.Tick += Timer_Tick;
-            lockers = system.StartThreadsPerCoreWithLocker(token);
+            lockers = system.StartThreadsPerCoreRK(token);
+            //lockers = system.StartThreadsPerCoreRK(token);
             timer.Start();
         }
 
@@ -329,8 +366,62 @@ namespace MiniSollaris
             system.StartThreadsPerCoreInCycles(token, skipSteps, locker);
             timer.Start();
         }
+
         #endregion
 
+        private void AddGraphsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!plotsOn)
+            {
+                plotsOn = true;
+            }
+        }
 
+        private void ClearGraphButton_Click(object sender, RoutedEventArgs e)
+        {
+            ClearGraphs();
+        }
+
+        private void ClearGraphs()
+        {
+            if (plotsOn)
+            {
+                var plots = background.Children.OfType<Polyline>();
+                foreach (Polyline plot in plots) plot.Points.Clear();
+            }
+        }
+
+        private void StopGraphButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (plotsOn)
+            {
+                plotsOn = false;
+            }
+        }
+
+        private void AddPlanetsToList()
+        {
+            planetListBox.Items.Add("None");
+            foreach (CelestialObject obj in system.Objects) planetListBox.Items.Add(obj.Name);
+        }
+
+        private void planetListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ClearGraphs();
+            string planet = (sender as ListBox).SelectedItem.ToString();
+            if (planet != "None") SelectNewCenter(planet);
+            else SelectNewCenter(new long[] { 0, 0 });
+            RedrawAll();
+        }
+
+        private void scaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {ClearGraphs();
+            if (loaded)
+            {
+                RedrawAll();
+                SelectNewRange((long)Math.Pow(e.NewValue,2)); 
+                ClearGraphs();
+            }
+        }
     }
 }

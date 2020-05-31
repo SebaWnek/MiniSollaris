@@ -18,7 +18,7 @@ namespace MiniSollaris
     /// <summary>
     /// Main class containing solar system objects and methods to calculate theit interactions and running simulation. 
     /// </summary>
-    class SolarSystem
+    public class SolarSystem
     {
         public double TimeStep { get; set; }
         /// <summary>
@@ -318,6 +318,18 @@ namespace MiniSollaris
             }
         }
 
+        public void CalculateStepRK()
+        {
+            foreach (CelestialObject obj in objects)
+            {
+                obj.CalculalteNewPositionRK(TimeStep);
+            }
+            foreach (CelestialObject obj in objects)
+            {
+                obj.UpdatePositionRK();
+            }
+        }
+
         #endregion
 
         #region Parallel
@@ -328,6 +340,11 @@ namespace MiniSollaris
         public void CalculateStepParallel()
         {
             Parallel.ForEach(Objects, (obj) => { (obj as CelestialObject).CalculateNewPosition(TimeStep); });
+        }
+        public void CalculateStepParallelRK()
+        {
+            Parallel.ForEach(Objects, (obj) => { (obj as CelestialObject).CalculalteNewPositionRK(TimeStep); });
+            Parallel.ForEach(Objects, (obj) => { (obj as CelestialObject).UpdatePositionRK(); });
         }
 
         #endregion
@@ -484,6 +501,115 @@ namespace MiniSollaris
             }
         }
 
+        #endregion
+
+        #region ThreadedRK
+        public object[] StartThreadsPerCoreRK(CancellationToken token)
+        {
+            int procCount = Environment.ProcessorCount;
+            int objCount = objects.Length;
+            int count = procCount <= objCount ? procCount : objCount;
+            List<CelestialObject>[] objPerThread = DivideObjectsPerThreads(count);
+            (Thread[] threads, object[] lockers) = GenerateThreadsRK(objPerThread, token);
+            foreach (Thread thread in threads) thread.Start();
+            return lockers;
+        }
+        public Thread[] StartThreadsPerCoreRK(int steps)
+        {
+            int procCount = Environment.ProcessorCount;
+            int objCount = objects.Length;
+            int count = procCount <= objCount ? procCount : objCount;
+            List<CelestialObject>[] objPerThread = DivideObjectsPerThreads(count);
+            Thread[] threads = GenerateThreadsRK(objPerThread, steps);
+            foreach (Thread thread in threads) thread.Start();
+            return threads;
+        }
+
+        private (Thread[], object[]) GenerateThreadsRK(List<CelestialObject>[] objPerThread, CancellationToken token)
+        {
+            Barrier barrier = new Barrier(objPerThread.Length);
+            Thread[] threads = new Thread[objPerThread.Length];
+            object[] lockers = new object[objPerThread.Length];
+            for (int i = 0; i < objPerThread.Length; i++)
+            {
+                lockers[i] = new object();
+            }
+            for (int i = 0; i < objPerThread.Length; i++)
+            {
+                int current = i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsRK(objPerThread[current], barrier, token, lockers[current]); })
+                {
+                    Name = "Thread " + i
+                };
+            }
+            return (threads, lockers);
+        }
+
+        private Thread[] GenerateThreadsRK(List<CelestialObject>[] objPerThread, int steps)
+        {
+            Barrier barrier = new Barrier(objPerThread.Length);
+            Thread[] threads = new Thread[objPerThread.Length];
+            //object[] lockers = new object[objPerThread.Length];
+            //for (int i = 0; i < objPerThread.Length; i++)
+            //{
+            //    lockers[i] = new object();
+            //}
+            for (int i = 0; i < objPerThread.Length; i++)
+            {
+                int current = i;
+                threads[i] = new Thread(() => { CalculateContinuousStepsRK(objPerThread[current], barrier, steps); })
+                {
+                    Name = "Thread " + i
+                };
+            }
+            return threads;
+        }
+
+        private void CalculateContinuousStepsRK(IEnumerable<CelestialObject> obj, Barrier barrier, CancellationToken token, object locker)
+        {
+            int objCount = obj.Count();
+            CelestialObject[] threadObjects = obj.ToArray();
+            while (true)
+            {
+                if (token.IsCancellationRequested) break;
+                for (int i = 0; i < objCount; i++)
+                {
+                    threadObjects[i].CalculalteNewPositionRK(TimeStep);
+                }
+                barrier.SignalAndWait();
+                lock (locker)
+                {
+                    for (int i = 0; i < objCount; i++)
+                    {
+                        threadObjects[i].UpdatePositionRK();
+                    }
+                }
+                //barrier.SignalAndWait();
+
+            }
+        }
+        private void CalculateContinuousStepsRK(IEnumerable<CelestialObject> obj, Barrier barrier, int steps)
+        {
+            int objCount = obj.Count();
+            CelestialObject[] threadObjects = obj.ToArray();
+            for(int j = 0; j < steps; j++)
+            {
+                for (int i = 0; i < objCount; i++)
+                {
+                    threadObjects[i].CalculalteNewPositionRK(TimeStep);
+                }
+                barrier.SignalAndWait();
+                //lock (locker)
+                //{
+                    for (int i = 0; i < objCount; i++)
+                    {
+                        threadObjects[i].UpdatePositionRK();
+                    }
+                //}
+                //barrier.SignalAndWait();
+
+            }
+        }
         #endregion
 
         #region Threaded
@@ -792,5 +918,15 @@ namespace MiniSollaris
             return result;
         }
         #endregion
+
+        public void Reset(string path, double timeStep)
+        {
+            TimeStep = timeStep;
+            objects = JSONHelpers.Deserialize(path);
+            CalculateContinuousStepsGMms();
+            forces = new double[objects.Length, objects.Length, 2];
+            forcesSum = new double[objects.Length, 2];
+            AssignCalculatableObjects();
+        }
     }
 }

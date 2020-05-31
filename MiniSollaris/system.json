@@ -1,0 +1,162 @@
+[
+  {
+    "Name": "Sun",
+    "Mass": 1.9885E+30,
+    "StdGravPar": 1.3271848532749998E+20,
+    "IsCalculatable": true,
+    "Radius": 695700000,
+    "Position": [
+      -755193037,
+      1050698175
+    ],
+    "Velocity": [
+      -0.01403999536832919e3,
+      -0.0062007958386030562e3
+    ],
+    "Picture": {
+      "Color": "#FFFFFF00",
+      "Size": 35
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Mercury",
+    "Mass": 3.3019999999999999E+23,
+    "StdGravPar": 22038543553000,
+    "IsCalculatable": true,
+    "Radius": 2440000,
+    "Position": [
+      -59824464464,
+      -9356665233
+    ],
+    "Velocity": [
+      -1.6869333599796801e3,
+      -45.886888195436931e3
+    ],
+    "Picture": {
+      "Color": "#FFB76D00",
+      "Size": 4
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Venus",
+    "Mass": 4.8684999999999998E+24,
+    "StdGravPar": 324938368527500,
+    "IsCalculatable": true,
+    "Radius": 6051000,
+    "Position": [
+      -39705067906,
+      -100258284959
+    ],
+    "Velocity": [
+      32.435863622784233e3,
+      -12.724522372476461e3
+    ],
+    "Picture": {
+      "Color": "#FFCC6699",
+      "Size": 6
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Earth",
+    "Mass": 5.9721900000000004E+24,
+    "StdGravPar": 398601966752850,
+    "IsCalculatable": true,
+    "Radius": 6378000,
+    "Position": [
+      -50903441388,
+      -142120858883
+    ],
+    "Velocity": [
+      27.612778807372649e3,
+      -9.9531398759216767e3
+    ],
+    "Picture": {
+      "Color": "#FF0000FF",
+      "Size": 8
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Moon",
+    "Mass": 7.3489999999999999E+22,
+    "StdGravPar": 4904944172350,
+    "IsCalculatable": true,
+    "Radius": 1737000,
+    "Position": [
+      -51267320455,
+      -142154873324
+    ],
+    "Velocity": [
+      27.73708143919783e3,
+      -11.01400555919551e3
+    ],
+    "Picture": {
+      "Color": "#FF6A675B",
+      "Size": 3
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Mars",
+    "Mass": 6.4171000000000003E+23,
+    "StdGravPar": 42829660155650,
+    "IsCalculatable": true,
+    "Radius": 3389000,
+    "Position": [
+      92928637733,
+      -187688327284
+    ],
+    "Velocity": [
+      22.605732832526751e3,
+      12.846579497841731e3
+    ],
+    "Picture": {
+      "Color": "#FFFF0000",
+      "Size": 5
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Phobos",
+    "Mass": 10800000000000000,
+    "StdGravPar": 720824.56199999992,
+    "IsCalculatable": true,
+    "Radius": 11000,
+    "Position": [
+      92935699478,
+      -187693347130
+    ],
+    "Velocity": [
+      23.633028594190112e3,
+      14.66218554288201e3
+    ],
+    "Picture": {
+      "Color": "#FF6A7155",
+      "Size": 2
+    },
+    "Number": 0
+  },
+  {
+    "Name": "Deimos",
+    "Mass": 1800000000000000,
+    "StdGravPar": 120137.427,
+    "IsCalculatable": true,
+    "Radius": 6000,
+    "Position": [
+      92929002339,
+      -187664952683
+    ],
+    "Velocity": [
+      21.375585177214521e3,
+      12.82116396869707e3
+    ],
+    "Picture": {
+      "Color": "#FF715655",
+      "Size": 3
+    },
+    "Number": 0
+  }
+]
